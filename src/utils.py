@@ -46,44 +46,40 @@ def get_employers_with_vacancies(min_vacancies):
 
 def get_all_vacancies(employer_id):
     """ Функция для получения всех вакансий работодателя """
-    vacancies = []  # Список для хранения всех вакансий
-    page = 0  # Начальная страница
+    vacancies = []
+    page = 0
 
-    while True:  # Бесконечный цикл, пока есть вакансии
-        # Формируем URL для запроса вакансий
+    while True:
         url = f'https://api.hh.ru/vacancies?employer_id={employer_id}&page={page}'
         response = requests.get(url)
 
-        if response.status_code == 200:  # Проверяем успешность запроса
-            data = response.json()  # Преобразуем ответ в JSON
-            items = data.get('items', [])  # Извлекаем вакансии
+        if response.status_code == 200:
+            data = response.json()
+            items = data.get('items', [])
 
-            if not items:  # Если вакансий нет, выходим из цикла
+            if not items:
                 break
 
-            # Обрабатываем каждую вакансию
             for item in items:
-                vacancy = {
-                    'vacancy_id': item.get('id'),  # id вакансии
-                    'name': item.get('name'),  # Название вакансии
-                    'id_employer': employer_id,  # ID работодателя
-                    'alternate_url': item.get('alternate_url'),
-                    'salary_from': item['salary']['from'] if item['salary'] else 0,  # Минимальная зарплата
-                    'salary_to': item['salary']['to'] if item['salary'] else 0  # Максимальная зарплата
-                }
-                vacancies.append(vacancy)  # Добавляем обработанную вакансию в список
+                try:
+                    vacancy = {
+                        'vacancy_id': item.get('id'),
+                        'name': item.get('name'),
+                        'id_employer': employer_id,
+                        'alternate_url': item.get('alternate_url'),
+                        'salary_from': item['salary']['from'] if item['salary'] else 0,
+                        'salary_to': item['salary']['to'] if item['salary'] else 0
+                    }
+                    vacancies.append(vacancy)
+                except KeyError:  # Handle missing keys safely
+                    print(f'Ошибка с вакансией: {item.get("id")}, пропускаем.')
 
-            page += 1  # Переходим на следующую страницу
+            page += 1
+        elif response.status_code == 403:
+            print(f'Ошибка 403 для работодателя {employer_id}: доступ запрещён. Пропускаем. ')  # Print the 403 error
+            break  # Exit loop on 403 error
         else:
-            print(f'Ошибка: {response.status_code}')  # Выводим ошибку, если произошла
+            print(f'Ошибка: {response.status_code}')
             break
 
-    return vacancies  # Возвращаем все собранные вакансии
-
-
-if __name__ == '__main__':
-    employer_id = '89'
-    all_vacancies = get_all_vacancies(employer_id)
-    get_employer_id("Домодедово")
-    get_employers_with_vacancies(100)
-
+    return vacancies
