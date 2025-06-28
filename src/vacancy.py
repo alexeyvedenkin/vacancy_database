@@ -1,4 +1,5 @@
 class Vacancy:
+
     def __init__(self, name, employer_id, employer_name, url, salary_range):
         self.name = name
         self.employer_id = employer_id
@@ -7,9 +8,9 @@ class Vacancy:
         self.salary_range = salary_range
 
     def __str__(self):
-        # Format output for printing with line breaks for separation
+        """ Форматирует представление вакансии при выводе """
         return (f"Вакансия: {self.name}\n"
                 f"Работодатель: {self.employer_name} (ID: {self.employer_id})\n"
                 f"URL: {self.url}\n"
                 f"Зарплата: {self.salary_range}\n"
-                "-------------------------")  # Added line for separation
+                "-------------------------")  # Добавлена линия разграничения
