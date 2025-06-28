@@ -14,7 +14,9 @@ def get_employer_id(employer_name: str) -> None:
             for employer in data['items']:
                 if employer_name.lower() in employer['name'].lower():
                     found = True
-                    print(f"ID: {employer['id']}, Name: {employer['name']}, Открыто вакансий: {employer['open_vacancies']}")
+                    print(f"ID: {employer['id']},"
+                          f" Name: {employer['name']}, "
+                          f"Открыто вакансий: {employer['open_vacancies']}")
             if not found:
                 print("Работодатель не найден.")
         else:
@@ -31,7 +33,7 @@ def get_employers_with_vacancies(min_vacancies):
 
     if response.status_code == 200:
         employers = response.json()
-        found = False  # Initialize found flag
+        found = False
         if 'items' in employers:
             for employer in employers['items']:
                 # Проверка количества вакансий на соответствие критерию
@@ -71,13 +73,13 @@ def get_all_vacancies(employer_id):
                         'salary_to': item['salary']['to'] if item['salary'] else 0
                     }
                     vacancies.append(vacancy)
-                except KeyError:  # Handle missing keys safely
+                except KeyError:
                     print(f'Ошибка с вакансией: {item.get("id")}, пропускаем.')
 
             page += 1
         elif response.status_code == 403:
             print(f'Ошибка 403 для работодателя {employer_id}: доступ запрещён. Пропускаем. ')  # Print the 403 error
-            break  # Exit loop on 403 error
+            break
         else:
             print(f'Ошибка: {response.status_code}')
             break
