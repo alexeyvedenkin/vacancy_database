@@ -2,6 +2,8 @@ from typing import Any
 
 import requests
 
+from config import EMPLOYERS_ID
+
 
 class HeadHunterAPI():
     """ Класс для работы с API HeadHunter """
@@ -23,24 +25,21 @@ class HeadHunterAPI():
         """ Осуществляет доступ к приватному атрибуту """
         return self.__vacancies
 
-    def load_employers(self, keyword: Any) -> Any:
+    def load_employers(self, keyword: str) -> list:
         """ Метод для загрузки работодателей с сайта api.hh.ru """
-        self.__url = 'https://api.hh.ru/employers'
-        self.__params['text'] = keyword
-        max_pages = 50  # Устанавливаем максимальное количество страниц для 5000 результатов
-        while self.__params.get('page') < max_pages:  # Проверяем, не превышает ли страница максимальную
-            response = requests.get(self.__url, headers=self.__headers, params=self.__params)
-            fetched_employers = response.json()['items']
+        for employer_id in EMPLOYERS_ID:
+            response = requests.get(f"{self.__url}/{employer_id}", headers=self.__headers)
 
-            # Если нет больше работодателей, выходим из цикла
-            if not fetched_employers:
-                break  # Прерываем цикл, если нет данных
+            if response.status_code != 200:  # Check for a successful response
+                print(f"Ошибка: {response.status_code} для ID: {employer_id}")
+                continue  # Skip this ID if there was an error
 
-            for employer in fetched_employers:
-                if 'employer' in employer and 'name' in employer['employer']:
-                    if keyword.lower() in employer['employer']['name'].lower():
-                        self.__employers.append(employer)
-            self.__params['page'] += 1  # Переход к следующей странице
+            employer_data = response.json()  # Get the employer data
+
+            # Check if the employer's name contains the keyword
+            if keyword.lower() in employer_data.get('name', '').lower():
+                self.__employers.append(employer_data)  # Add to the list if it matches
+
         return self.__employers
 
     def load_vacancies(self, employer_id: Any) -> Any:
@@ -50,17 +49,28 @@ class HeadHunterAPI():
         self.__params['page'] = 0  # Сброс страницы перед загрузкой
         max_pages = 50
 
-        while self.__params.get('page') < max_pages:  # Проверяем количество страниц
+        while self.__params['page'] < max_pages:
             response = requests.get(self.__url, headers=self.__headers, params=self.__params)
-            fetched_vacancies = response.json()['items']
 
-            # Если нет больше вакансий, выходим из цикла
+            if response.status_code != 200:  # Проверка на успешный ответ
+                print(f"Ошибка: {response.status_code}")
+                break
+
+            fetched_vacancies = response.json().get('items', [])  # Восстановление данных
+
             if not fetched_vacancies:
                 break  # Прерываем цикл, если нет данных
 
             for vacancy in fetched_vacancies:
-                if employer_id == vacancy['employer']['id']:
-                    self.__vacancies.append(vacancy)
+                # Вывод полной информации о вакансии для отладки
+                print(vacancy)  # Дебаг: выводим данные вакансии
+
+                # Проверяем наличие ключей 'salary' и 'currency'
+                salary = vacancy.get('salary')
+                if salary is not None and salary.get('currency') == 'RUR':  # Заменено: объединили проверку на None
+                    # Проверяем, совпадает ли идентификатор работодателя
+                    if employer_id == vacancy['employer']['id']:
+                        self.__vacancies.append(vacancy)  # Добавляем только при совпадении валюты
 
             self.__params['page'] += 1  # Переход к следующей странице
 

@@ -2,93 +2,181 @@ import json
 import os
 import psycopg2
 from dotenv import load_dotenv
-from alt_utils import HHAPI
+from psycopg2 import sql
+
+from src.hh_api import HHAPI
 from src.utils import get_all_vacancies
 
 load_dotenv()
 
 class DBMaker:
-    """ Предназначен для формирования таблиц в базе данных и их заполнения """
-    def __init__(self, db_name):
+    """ Предназначен для создания базы данных, формирования таблиц в базе данных и их заполнения """
+    def __init__(self):
+        self.user = os.getenv("USER")
+        self.password = os.getenv("PASSWORD")
+        self.host = os.getenv("HOST")
+        self.port = os.getenv("PORT")
+        self.connection = psycopg2.connect(user=self.user, password=self.password, host=self.host, port=self.port)
+        self.connection.autocommit = True
+        self.cursor = self.connection.cursor()
+        self.db_name = None
+        self.connect_to_database()
+
+    def database_exists(self, db_name):
+        cursor = self.connection.cursor()
+        cursor.execute(
+            sql.SQL("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s;"),
+            [db_name]
+        )
+        exists = cursor.fetchone() is not None  # Проверка, существует ли база данных
+        cursor.close()
+        return exists
+
+    def delete_database(self, db_name):
+        # Terminate the connections to the database before dropping it
+        with self.connection.cursor() as cursor:
+            cursor.execute(f"SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = %s;", (db_name,))
+            cursor.execute(f"DROP DATABASE {db_name};")  # Now drop the database
+
+    def create_database(self, db_name):
+        if self.database_exists(db_name):  # Проверка на существование
+            print(f"База данных '{db_name}' уже существует.")
+            return  # Выход, если база уже существует
+
+        cursor = self.connection.cursor()
+        cursor.execute(f"CREATE DATABASE {db_name};")  # Создание базы данных
+        cursor.close()
+
+        # Закрываем текущее соединение
+        self.connection.close()
+
+        # Создаем новое соединение для новой базы
+        self.connection = psycopg2.connect(database=db_name,
+                                           user=self.user,
+                                           password=self.password,
+                                           host=self.host,
+                                           port=self.port) # обращаем внимание на параметры
+        self.connection.autocommit = True  # Включение автокоммита
+
+    def connect_to_database(self):
+        """ Метод для подключения к базе данных """
+
         try:
-            dsn = (f"dbname={db_name} user={os.getenv('USER')} password={os.getenv('PASSWORD')} "
-                   f"host={os.getenv('HOST', 'localhost')} port={os.getenv('PORT', '5432')}")
-            self.connection = psycopg2.connect(dsn)
+            dsn = (f"dbname={self.db_name} user={self.user} password={self.password} "
+                   f"host={self.host} port={self.port}")
+            self.connection = psycopg2.connect(dsn)  # Connect to the new database
             self.cursor = self.connection.cursor()
         except Exception as e:
             print("Ошибка при подключении к базе данных:", str(e))
             self.cursor = None
 
-    def create_table(self, table_name, json_data):
-        """ Формирует и заполняет таблицу на основе имеющихся данных """
-        if self.cursor is None:
-            print("Ошибка создания таблицы: нет соединения с базой данных.")
+        if not self.db_name:
+            print("Ошибка: имя базы данных не задано.")
             return
 
-        drop_table_query = f"DROP TABLE IF EXISTS {table_name}"
-        self.cursor.execute(drop_table_query)
+    def create_table(self, table_name, json_data):  # Added 'self' to parameters
+        self.connect_to_database()  # Call the method to connect to the database
+        if not self.cursor:  # Check if cursor created successfully
+            print("Не удалось создать курсор. Прекращение.")
+            return
 
-        # Загружаем данные из JSON
-        records = json.loads(json_data)
-        if isinstance(records, dict):
-            records = [records]
-
-        # Замена значений [null]
-        for record in records:
-            for key in record:
-                if record[key] is None:
-                    record[key] = 0
-
-        # Задаем корректные типы столбцов
-        columns = []
-        for key in records[0].keys():
-            col_type = "VARCHAR"  # По умолчанию для строковых данных
-            for record in records:
-                value = record[key]
+        # Если json_data — список, берём первый элемент для определения полей
+        if isinstance(json_data, list) and json_data:  # Ensure json_data is a non-empty list
+            first_row = json_data[0]
+            columns = []
+            for column_name, value in first_row.items():
+                # Простое определение типа данных
                 if isinstance(value, int):
-                    col_type = "INT"  # Для целочисленных значений
-                    break
+                    pg_type = "INTEGER"
                 elif isinstance(value, float):
-                    col_type = "FLOAT"  # Для чисел с плавающей точкой
-                    break
+                    pg_type = "REAL"
+                else:
+                    pg_type = "TEXT"
+                columns.append(f'"{column_name}" {pg_type}')
+        else:
+            print("Ошибка: json_data должен быть непустым списком или словарём.")
+            return
 
-            columns.append(f"{key} {col_type}")
-
-        # Создаем таблицу с заданными наименованиями и типами столбцов
+        # Prepare column definitions from json_data
         columns_definition = ', '.join(columns)
-        create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({columns_definition})"
-        self.cursor.execute(create_table_query)
+        create_statement = f'CREATE TABLE IF NOT EXISTS "{table_name}" ({columns_definition});'
 
-        # Загружаем данные в таблицу
-        for record in records:
-            placeholders = ', '.join(['%s'] * len(record))
-            insert_query = f"INSERT INTO {table_name} ({', '.join(record.keys())}) VALUES ({placeholders})"
-            try:
-                self.cursor.execute(insert_query, tuple(record.values()))
-            except Exception as e:
-                print("Ошибка при вставке данных:", str(e))
+        try:
+            # Remove the second execution; it's redundant
+            self.cursor.execute(create_statement)  # Execute the create statement
+            self.connection.commit()  # Save (commit) changes
+        except Exception as e:
+            print("Error creating table:", e)  # Print error if it occurs
+        finally:
+            self.cursor.close()  # Close cursor
+            self.connection.close()  # Close connection
 
-        self.connection.commit()
+    def fill_table(self, table_name, json_data):
+        # Ensure json_data is a list of dictionaries
+        if isinstance(json_data, str):
+            json_data = json.loads(json_data)  # Load string to JSON if needed
+
+        if not isinstance(json_data, list):  # Check if json_data is a list
+            print("Error: json_data should be a list of dictionaries.")
+            return
+
+        try:
+            conn = psycopg2.connect(dbname=self.db_name, host=self.host, user=self.user, password=self.password)
+            cursor = conn.cursor()
+
+            for entry in json_data:
+                if not isinstance(entry, dict):  # Ensure each entry is a dictionary
+                    print("Error: Each entry should be a dictionary.")
+                    continue
+
+                cursor.execute(sql.SQL("INSERT INTO employer ({}) VALUES ({})").format(
+                    sql.SQL(', ').join(sql.Identifier(key) for key in entry.keys()),
+                    sql.SQL(', ').join(sql.Placeholder() for _ in entry)  # Correctly use placeholders for values
+                ), tuple(entry.values()))  # Pass values here
+            conn.commit()
+            print("Table 'employer' filled.")
+
+        except Exception as e:
+            print(f"Error filling table: {e}")
+        finally:
+            cursor.close()
+            conn.close()
 
     def close(self):
         self.cursor.close()
         self.connection.close()
 
 if __name__ == '__main__':
-    db = DBMaker("test777")
-
-    employer_ids = [89, 80]
-    hh_api = HHAPI(employer_ids)
+    db = DBMaker("test999")
+    user_sample_ids = [1740, 89, 15478, 9694561, 1808, 3809, 740, 909495, 1669269, 20189, 107434]
+    # employer_ids = [89, 80]
+    hh_api = HHAPI(user_sample_ids)
+    print(111)
     hh_api.fetch_all_employers_info()
+    print(222)
     employers_json = hh_api.to_json()
+    print(333)
     db.create_table('employers', employers_json)
     print("Table filled with data from JSON.")
 
-    all_vacancies = []  # Создаем пустой список для всех вакансий
-    for employer in employer_ids:
-        all_vacancies.extend(get_all_vacancies(employer))  # Добавляем вакансии в список
+    all_vacancies = []  # Create an empty list for all vacancies
+    print(444)
+    for employer in user_sample_ids:
+        print(555)
+        try:
+            # Attempt to get all vacancies for the employer
+            vacancies = get_all_vacancies(employer)
+            print(f'Количество вакансий у работодателя c ID={employer}: {len(vacancies)}')
+            all_vacancies.extend(vacancies)  # Add vacancies to the list
+            print(f'Текущее количество отобранных вакансий: {len(all_vacancies)}')
+        except Exception as e:  # Catch any exception, like a 403 error
+            # Print the error with ids for better traceability
+            print(f"Error for employer {employer}: {e}")
 
-    vacancies_json = json.dumps(all_vacancies, ensure_ascii=False)  # Преобразуем все вакансии в JSON
+    print(666)
+    vacancies_json = json.dumps(all_vacancies, ensure_ascii=False)
+    print(777)
+    # Create table in database
     db.create_table('vacancies', vacancies_json)
     print("Table filled with vacancies data from JSON.")
 
