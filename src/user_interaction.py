@@ -68,6 +68,7 @@ def user_interaction() -> None:
         try:
             vacancies_json = json.dumps(all_vacancies, ensure_ascii=False)
             db_maker.create_table('vacancies', vacancies_json)
+            db_maker.fill_table('vacancies', vacancies_json)
             print("Сформирована таблица 'vacancies' с данными о вакансиях")
             print(f"В таблицу загружены данные о {len(all_vacancies)} вакансиях")
             print()
@@ -76,7 +77,7 @@ def user_interaction() -> None:
 
     elif choice == '2':
         load_fixtures(db_maker)  # Вызываем функцию загрузки фикстур
-
+        print()
 
     else:
         print("Неверный выбор, пожалуйста, перезапустите программу.")
@@ -89,6 +90,7 @@ def user_interaction() -> None:
           f'Облегченный - количество выводимых вакансий определяется пользователем,'
           f'информация о всех вакансиях сохраняется в CSV-файл')
 
+    print()
     # Get and print company info and vacancy counts
     try:
         mode_input = input("Выберите режим отображения (1 - Полный, любой другой символ - Облегченный): ").strip()
@@ -114,10 +116,14 @@ def user_interaction() -> None:
         else:
             count = None  # Show all vacancies in Full mode
 
+        print()
+
         # Print the selected mode and count for confirmation - optional
         print(f"Выбранный режим: {mode}")
         if count is not None:
             print(f"Количество вакансий для вывода: {count}")
+
+        print()
 
         # Display information about employers and open vacancies
         print("Сведения о работодателях и количестве открытых вакансий:")
