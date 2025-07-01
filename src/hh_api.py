@@ -1,5 +1,7 @@
-import requests
 import json
+
+import requests
+
 
 class Employer:
     def __init__(self, employer_id, employer_name, vacancies_url, open_vacancies_count):

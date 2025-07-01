@@ -1,13 +1,15 @@
+import csv
 import os
+
 import psycopg2
 from dotenv import load_dotenv
-import csv
 
 from config import DATA_DIR
 from src.employers import Employers
 from src.vacancy import Vacancy
 
 load_dotenv()
+
 
 class DBManager:
     def __init__(self, dbname):
@@ -23,7 +25,7 @@ class DBManager:
 
     def fetch_columns(self, table_name):
         # Запрос для получения названий и типов столбцов
-        query = f"""
+        query = """
         SELECT column_name, data_type
         FROM information_schema.columns
         WHERE table_name = %s AND table_schema = 'public';
@@ -34,8 +36,8 @@ class DBManager:
     def get_companies_and_vacancies_count(self):
         # Измененный запрос для получения имени работодателя и количества вакансий
         self.cursor.execute("""
-                    SELECT e.id, e.name, COUNT(v.vacancy_id) 
-                    FROM employers e 
+                    SELECT e.id, e.name, COUNT(v.vacancy_id)
+                    FROM employers e
                     LEFT JOIN vacancies v ON e.id = v.id_employer::character varying
                     GROUP BY e.id, e.name;
                 """)
@@ -60,7 +62,7 @@ class DBManager:
 
     def get_all_vacancies(self, limit=None):
         self.cursor.execute("""
-            SELECT v.name AS vacancy_name, e.id AS employer_id, e.name AS employer_name, 
+            SELECT v.name AS vacancy_name, e.id AS employer_id, e.name AS employer_name,
                    v.alternate_url, v.salary_from, v.salary_to
             FROM vacancies v
             JOIN employers e ON v.id_employer::text = e.id::text;  -- Cast both IDs to text
@@ -90,7 +92,7 @@ class DBManager:
     def get_avg_salary(self):
         # Calculate the average salary using SQL's AVG function with updated logic
         query = '''
-            SELECT AVG(CASE 
+            SELECT AVG(CASE
                 WHEN salary_from > 0 AND salary_to = 0 THEN salary_from
                 WHEN salary_from = 0 AND salary_to > 0 THEN salary_to * 0.75
                 WHEN salary_from > 0 AND salary_to > 0 THEN (salary_from + salary_to) / 2
@@ -129,7 +131,7 @@ class DBManager:
 
     def get_vacancies_with_keyword(self, keyword):
         self.cursor.execute("""
-            SELECT v.name AS vacancy_name, e.id AS employer_id, e.name AS employer_name, 
+            SELECT v.name AS vacancy_name, e.id AS employer_id, e.name AS employer_name,
                    v.alternate_url, v.salary_from, v.salary_to
             FROM vacancies v
             JOIN employers e ON v.id_employer::text = e.id::text
@@ -249,7 +251,7 @@ if __name__ == '__main__':
 
         print()
         print(f'Выведены сведения о {len(vacancies[:count])} вакансий из имеющихся {len(vacancies)}')
-        print(f'Полный список вакансий выгружен в файл "data/all_vacancies.csv"')
+        print('Полный список вакансий выгружен в файл "data/all_vacancies.csv"')
         print()
 
         # Wait for the user to proceed to the Average Salary section
@@ -268,14 +270,14 @@ if __name__ == '__main__':
 
         print()
         print(f'Выведены сведения о {len(higher_vacancies[:count])} вакансий из имеющихся {len(higher_vacancies)}')
-        print(f'Полный список вакансий выгружен в файл "data/higher_salary_vacancies.csv"')
+        print('Полный список вакансий выгружен в файл "data/higher_salary_vacancies.csv"')
         print()
 
         # Wait for the user to continue to filtering vacancies
         input("Нажмите Enter, чтобы перейти к фильтрации вакансий...")
 
         # Filtering vacancies with the keyword
-        user_key = input(f'Введите ключевое слово для фильтрации вакансий:')
+        user_key = input('Введите ключевое слово для фильтрации вакансий:')
         print()
         filtered_vacancies = db_manager.get_vacancies_with_keyword(user_key)
         for vacancy in filtered_vacancies[:count] if count is not None else filtered_vacancies:

@@ -1,9 +1,10 @@
-from src.hh_api import HHAPI
-from src.db_manager import DBManager
-from src.utils import get_all_vacancies, load_fixtures
-from src.db_maker import DBMaker
 import json
+
 from config import EMPLOYERS_ID
+from src.db_maker import DBMaker
+from src.db_manager import DBManager
+from src.hh_api import HHAPI
+from src.utils import get_all_vacancies, load_fixtures
 
 
 def user_interaction() -> None:
@@ -151,7 +152,7 @@ def user_interaction() -> None:
 
         print()
         print(f'Выведены сведения о {len(vacancies[:count])} вакансий из имеющихся {len(vacancies)}')
-        print(f'Полный список вакансий выгружен в файл "data/all_vacancies.csv"')
+        print('Полный список вакансий выгружен в файл "data/all_vacancies.csv"')
         print()
 
         # Wait for the user to proceed to the Average Salary section
@@ -170,7 +171,7 @@ def user_interaction() -> None:
 
         print()
         print(f'Выведены сведения о {len(higher_vacancies[:count])} вакансий из имеющихся {len(higher_vacancies)}')
-        print(f'Полный список вакансий выгружен в файл "data/higher_salary_vacancies.csv"')
+        print('Полный список вакансий выгружен в файл "data/higher_salary_vacancies.csv"')
         print()
 
         # Wait for the user to continue to filtering vacancies
@@ -178,7 +179,7 @@ def user_interaction() -> None:
 
         while True:  # Start an infinite loop to allow repeated filtering
             # Filtering vacancies with the keyword
-            user_key = input(f'Введите ключевое слово для фильтрации вакансий (нажмите Enter, чтобы завершить): ')
+            user_key = input('Введите ключевое слово для фильтрации вакансий (нажмите Enter, чтобы завершить): ')
 
             if user_key == "":  # Check if the user just pressed Enter
                 print("Выход из фильтрации.")
@@ -192,13 +193,15 @@ def user_interaction() -> None:
                 print(vacancy)
 
             print(
-                f'Выведены сведения о {len(filtered_vacancies[:count])} вакансий из имеющихся {len(filtered_vacancies)}')
+                f'Выведены сведения о {len(filtered_vacancies[:count])} '
+                f'вакансий из имеющихся {len(filtered_vacancies)}')
             print(f'Полный список вакансий выгружен в файл "data/vacancies_with_{user_key}.csv"')
 
     except Exception as e:
         print(f'Ошибка при извлечении данных: {e}')
 
     db_manager.close()
+
 
 if __name__ == '__main__':
     user_interaction()

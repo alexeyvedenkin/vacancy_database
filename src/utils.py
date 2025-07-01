@@ -1,12 +1,15 @@
-import requests
-import psycopg2
 import json
 import os
+
+import psycopg2
+import requests
 from dotenv import load_dotenv
+
 from config import DATA_DIR
 
 
 load_dotenv()
+
 
 def get_employer_id(employer_name: str) -> None:
     """ Вспомогательная функция для определения ID работодателя по его наименованию """

@@ -1,13 +1,13 @@
 import json
 import os
+
 import psycopg2
 from dotenv import load_dotenv
 from psycopg2 import sql
 
-from src.hh_api import HHAPI
-from src.utils import get_all_vacancies
 
 load_dotenv()
+
 
 class DBMaker:
     """ Предназначен для создания базы данных, формирования таблиц в базе данных и их заполнения """
@@ -35,7 +35,8 @@ class DBMaker:
     def delete_database(self, db_name):
         # Terminate the connections to the database before dropping it
         with self.connection.cursor() as cursor:
-            cursor.execute(f"SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = %s;", (db_name,))
+            cursor.execute("SELECT pg_terminate_backend(pg_stat_activity.pid) "
+                           f"FROM pg_stat_activity WHERE pg_stat_activity.datname = %s;", (db_name,))
             cursor.execute(f"DROP DATABASE {db_name};")  # Now drop the database
 
     def set_database_name(self, db_name):
@@ -65,8 +66,8 @@ class DBMaker:
                                            user=self.user,
                                            password=self.password,
                                            host=self.host,
-                                           port=self.port) # обращаем внимание на параметры
-        self.connection.autocommit = True  # Включение автокоммита
+                                           port=self.port)  # обращаем внимание на параметры
+        self.connection.autocommit = True   # Включение автокоммита
 
     def connect_to_database(self):
         """ Метод для подключения к базе данных """
@@ -167,39 +168,3 @@ class DBMaker:
     def close(self):
         self.cursor.close()
         self.connection.close()
-
-if __name__ == '__main__':
-    db = DBMaker("test999")
-    user_sample_ids = [1740, 89, 15478, 9694561, 1808, 3809, 740, 909495, 1669269, 20189, 107434]
-    # employer_ids = [89, 80]
-    hh_api = HHAPI(user_sample_ids)
-    print(111)
-    hh_api.fetch_all_employers_info()
-    print(222)
-    employers_json = hh_api.to_json()
-    print(333)
-    db.create_table('employers', employers_json)
-    print("Table filled with data from JSON.")
-
-    all_vacancies = []  # Create an empty list for all vacancies
-    print(444)
-    for employer in user_sample_ids:
-        print(555)
-        try:
-            # Attempt to get all vacancies for the employer
-            vacancies = get_all_vacancies(employer)
-            print(f'Количество вакансий у работодателя c ID={employer}: {len(vacancies)}')
-            all_vacancies.extend(vacancies)  # Add vacancies to the list
-            print(f'Текущее количество отобранных вакансий: {len(all_vacancies)}')
-        except Exception as e:  # Catch any exception, like a 403 error
-            # Print the error with ids for better traceability
-            print(f"Error for employer {employer}: {e}")
-
-    print(666)
-    vacancies_json = json.dumps(all_vacancies, ensure_ascii=False)
-    print(777)
-    # Create table in database
-    db.create_table('vacancies', vacancies_json)
-    print("Table filled with vacancies data from JSON.")
-
-    db.close()
