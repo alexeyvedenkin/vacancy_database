@@ -1,12 +1,12 @@
 import json
 import os
 
-import psycopg2
-import requests
+import psycopg2 # type: ignore
+import requests # type: ignore
 from dotenv import load_dotenv
 
 from config import DATA_DIR
-
+from src.db_maker import DBMaker
 
 load_dotenv()
 
@@ -35,7 +35,7 @@ def get_employer_id(employer_name: str) -> None:
         print("Ошибка при запросе:", response.status_code)
 
 
-def get_employers_with_vacancies(min_vacancies):
+def get_employers_with_vacancies(min_vacancies: int) -> None:
     """ Вспомогательная функция для подбора работодателя по необходимому количеству вакансий """
     url = "https://api.hh.ru/employers"
     params = {'open_vacancies': min_vacancies}  # Задан фильтр по минимально необходимому количеству вакансий
@@ -56,7 +56,7 @@ def get_employers_with_vacancies(min_vacancies):
         print("Ошибка при запросе:", response.status_code)
 
 
-def get_all_vacancies(employer_id):
+def get_all_vacancies(employer_id: int) -> list:
     """ Функция для получения всех вакансий работодателя """
     vacancies = []
     page = 0
@@ -97,7 +97,7 @@ def get_all_vacancies(employer_id):
     return vacancies
 
 
-def export_tables_to_json(dbname):
+def export_tables_to_json(dbname: str) -> None:
     """ Загружает фикстуры таблиц из базы данных """
 
     # Создание соединения с базой данных
@@ -145,7 +145,7 @@ def export_tables_to_json(dbname):
     print("Фикстуры успешно сохранены в папку 'data/fixtures'.")
 
 
-def load_fixtures(db_maker) -> None:
+def load_fixtures(db_maker: DBMaker) -> None:
     """Загружает данные из JSON-файлов в директории 'data/fixtures'."""
 
     fixtures_dir = os.path.join(DATA_DIR, 'fixtures')  # Use DATA_DIR for the correct path

@@ -1,8 +1,10 @@
 from typing import Any
 
-import requests
+import requests # type: ignore
 
 from config import EMPLOYERS_ID
+from src.hh_api import Employer
+from src.vacancy import Vacancy
 
 
 class HeadHunterAPI():
@@ -13,8 +15,8 @@ class HeadHunterAPI():
         # self.__url = 'https://api.hh.ru/vacancies'
         self.__headers = {'User-Agent': 'HH-User-Agent'}
         self.__params = {'text': '', 'page': 0, 'per_page': 100, 'area': 113, 'employer_id': ''}
-        self.__employers = []
-        self.__vacancies = []
+        self.__employers: list[Employer] = []
+        self.__vacancies: list[Vacancy] = []
         self.__file_worker = file_worker
 
     def get_employers(self) -> list:

@@ -1,7 +1,7 @@
 import json
 import os
 
-import psycopg2
+import psycopg2 # type: ignore
 from dotenv import load_dotenv
 from psycopg2 import sql
 
@@ -11,7 +11,7 @@ load_dotenv()
 
 class DBMaker:
     """ Предназначен для создания базы данных, формирования таблиц в базе данных и их заполнения """
-    def __init__(self):
+    def __init__(self) -> None:
         self.user = os.getenv("USER")
         self.password = os.getenv("PASSWORD")
         self.host = os.getenv("HOST")
@@ -19,10 +19,11 @@ class DBMaker:
         self.connection = psycopg2.connect(user=self.user, password=self.password, host=self.host, port=self.port)
         self.connection.autocommit = True
         self.cursor = self.connection.cursor()
-        self.db_name = None
+        self.db_name: str = ""
         self.connect_to_database()
 
-    def database_exists(self, db_name):
+    def database_exists(self, db_name: str) -> bool:
+        """ Проверяет существование базы данных с введенным названием """
         cursor = self.connection.cursor()
         cursor.execute(
             sql.SQL("SELECT 1 FROM pg_catalog.pg_database WHERE datname = %s;"),
@@ -32,20 +33,23 @@ class DBMaker:
         cursor.close()
         return exists
 
-    def delete_database(self, db_name):
-        # Terminate the connections to the database before dropping it
+    def delete_database(self, db_name: str) -> None:
+        """ Выполняет удаление существующей базы данных """
+
+        # Прерываем все действующие соединения с базой данных перед ее удалением
         with self.connection.cursor() as cursor:
             cursor.execute("SELECT pg_terminate_backend(pg_stat_activity.pid) "
                            f"FROM pg_stat_activity WHERE pg_stat_activity.datname = %s;", (db_name,))
-            cursor.execute(f"DROP DATABASE {db_name};")  # Now drop the database
 
-    def set_database_name(self, db_name):
+            cursor.execute(f"DROP DATABASE {db_name};")  # Удаляем базу
+
+    def set_database_name(self, db_name: str) -> None:
         """ Метод для установки имени базы данных """
-        self.db_name = db_name  # Set the database name
+        self.db_name = db_name
 
-    def create_database(self, db_name):
-
-        self.set_database_name(db_name)  # Set db_name before using it
+    def create_database(self, db_name:str) -> None:
+        """ Выполняет создание базы данных """
+        self.set_database_name(db_name)
 
         if self.database_exists(db_name):  # Проверка на существование
             print(f"База данных '{db_name}' уже существует.")
@@ -55,8 +59,8 @@ class DBMaker:
         cursor.execute(f"CREATE DATABASE {db_name};")  # Создание базы данных
         cursor.close()
 
-        # Установить имя базы данных
-        self.db_name = db_name  # Обновляем self.db_name
+        # Обновляем self.db_name
+        self.db_name = db_name
 
         # Закрываем текущее соединение
         self.connection.close()
@@ -66,10 +70,10 @@ class DBMaker:
                                            user=self.user,
                                            password=self.password,
                                            host=self.host,
-                                           port=self.port)  # обращаем внимание на параметры
-        self.connection.autocommit = True   # Включение автокоммита
+                                           port=self.port)
+        self.connection.autocommit = True
 
-    def connect_to_database(self):
+    def connect_to_database(self) -> None:
         """ Метод для подключения к базе данных """
 
         if not self.db_name:
@@ -85,28 +89,30 @@ class DBMaker:
             print("Ошибка при подключении к базе данных:", str(e))
             self.cursor = None
 
-    def create_table(self, table_name, json_data):  # Added 'self' to parameters
-        self.connect_to_database()  # Call the method to connect to the database
-        if not self.cursor:  # Check if cursor created successfully
+    def create_table(self, table_name: str, json_data: str) -> None:
+        """ Создает таблицы в базе данных """
+
+        self.connect_to_database()
+        if not self.cursor:
             print("Не удалось создать курсор. Прекращение.")
             return
 
-        if isinstance(json_data, str):  # Check if json_data is a JSON string
-            json_data = json.loads(json_data)  # Convert JSON string to list
+        if isinstance(json_data, str):
+            json_data = json.loads(json_data)
 
         # Если json_data — список, берём первый элемент для определения полей
-        if isinstance(json_data, list) and json_data:  # Ensure json_data is a non-empty list
+        if isinstance(json_data, list) and json_data:
             first_row = json_data[0]
             columns = []
             for column_name, value in first_row.items():
-                # Determine the data type for PostgreSQL
+                # Определяем типы данных для PostgreSQL
                 if isinstance(value, int):
-                    pg_type = "INT"  # Change INTEGER to INT
+                    pg_type = "INT"
                 elif isinstance(value, float):
-                    pg_type = "FLOAT"  # Change REAL to FLOAT
+                    pg_type = "FLOAT"
                 else:
-                    pg_type = "VARCHAR"  # Change TEXT to VARCHAR by default
-                columns.append(f'"{column_name}" {pg_type}')  # Append the column definition
+                    pg_type = "VARCHAR"
+                columns.append(f'"{column_name}" {pg_type}')  # Задаем наименования и типы столбцов
 
         else:
             print("Ошибка: json_data должен быть непустым списком или словарём.")
@@ -126,12 +132,13 @@ class DBMaker:
             self.cursor.close()  # Close cursor
             self.connection.close()  # Close connection
 
-    def fill_table(self, table_name, json_data):
-        # Ensure json_data is a list of dictionaries
-        if isinstance(json_data, str):
-            json_data = json.loads(json_data)  # Load string to JSON if needed
+    def fill_table(self, table_name: str, json_data: str) -> None:
+        """ Выполняет загрузку данных из JSON в таблицы"""
 
-        if not isinstance(json_data, list):  # Check if json_data is a list
+        if isinstance(json_data, str):
+            json_data = json.loads(json_data)
+
+        if not isinstance(json_data, list):
             print("Ошибка: json-данные должны быть списком словарей.")
             return
 
@@ -140,21 +147,21 @@ class DBMaker:
             cursor = conn.cursor()
 
             for entry in json_data:
-                if not isinstance(entry, dict):  # Ensure each entry is a dictionary
+                if not isinstance(entry, dict):
                     print("Ошибка: каждая запись в списке должна быть словарем.")
                     continue
 
-                # Replace None values with 0
+                # Замена значений [null] на 0
                 for key in entry:
-                    if entry[key] is None:  # Check if the value is None (equivalent to [null] in JSON)
-                        entry[key] = 0  # Replace with 0
+                    if entry[key] is None:
+                        entry[key] = 0
 
-                # Use the table_name parameter in the SQL query
+                # Загрузка данных через SQL-запрос
                 cursor.execute(sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
-                    sql.Identifier(table_name),  # Use table_name safely
+                    sql.Identifier(table_name),
                     sql.SQL(', ').join(sql.Identifier(key) for key in entry.keys()),
-                    sql.SQL(', ').join(sql.Placeholder() for _ in entry)  # Placeholders for the values
-                ), tuple(entry.values()))  # Pass values here
+                    sql.SQL(', ').join(sql.Placeholder() for _ in entry)
+                ), tuple(entry.values()))
 
             conn.commit()
             print(f"Таблица {table_name} заполнена.")
@@ -165,6 +172,6 @@ class DBMaker:
             cursor.close()
             conn.close()
 
-    def close(self):
+    def close(self) -> None:
         self.cursor.close()
         self.connection.close()

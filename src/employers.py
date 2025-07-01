@@ -1,10 +1,13 @@
+from typing import Any
+
+
 class Employers():
     """ Определяет параметры для подбора работодателей с API-сервиса api.hh.ru """
 
     def __init__(self, data: dict) -> None:
-        self.employer_id: int = data.get('employer_id')
-        self.name: str = data.get('name')
-        self.open_vacancies: int = data.get('open_vacancies')
+        self.employer_id: int = data.get('employer_id') or 0
+        self.name: Any = data.get('name')
+        self.open_vacancies: int = data.get('open_vacancies') or 0
 
     def __str__(self) -> str:
         """ Возвращает формат для вывода строкового значения работодателя """
