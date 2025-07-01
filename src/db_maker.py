@@ -85,14 +85,15 @@ class DBMaker:
             first_row = json_data[0]
             columns = []
             for column_name, value in first_row.items():
-                # Простое определение типа данных
+                # Determine the data type for PostgreSQL
                 if isinstance(value, int):
-                    pg_type = "INTEGER"
+                    pg_type = "INT"  # Change INTEGER to INT
                 elif isinstance(value, float):
-                    pg_type = "REAL"
+                    pg_type = "FLOAT"  # Change REAL to FLOAT
                 else:
-                    pg_type = "TEXT"
-                columns.append(f'"{column_name}" {pg_type}')
+                    pg_type = "VARCHAR"  # Change TEXT to VARCHAR by default
+                columns.append(f'"{column_name}" {pg_type}')  # Append the column definition
+
         else:
             print("Ошибка: json_data должен быть непустым списком или словарём.")
             return
@@ -106,7 +107,7 @@ class DBMaker:
             self.cursor.execute(create_statement)  # Execute the create statement
             self.connection.commit()  # Save (commit) changes
         except Exception as e:
-            print("Error creating table:", e)  # Print error if it occurs
+            print("Ошибка создания таблицы:", e)  # Print error if it occurs
         finally:
             self.cursor.close()  # Close cursor
             self.connection.close()  # Close connection
@@ -117,7 +118,7 @@ class DBMaker:
             json_data = json.loads(json_data)  # Load string to JSON if needed
 
         if not isinstance(json_data, list):  # Check if json_data is a list
-            print("Error: json_data should be a list of dictionaries.")
+            print("Ошибка: json-данные должны быть списком словарей.")
             return
 
         try:
@@ -126,18 +127,21 @@ class DBMaker:
 
             for entry in json_data:
                 if not isinstance(entry, dict):  # Ensure each entry is a dictionary
-                    print("Error: Each entry should be a dictionary.")
+                    print("Ошибка: каждая запись в списке должна быть словарем.")
                     continue
 
-                cursor.execute(sql.SQL("INSERT INTO employer ({}) VALUES ({})").format(
+                # Use the table_name parameter in the SQL query
+                cursor.execute(sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
+                    sql.Identifier(table_name),  # Use table_name safely
                     sql.SQL(', ').join(sql.Identifier(key) for key in entry.keys()),
-                    sql.SQL(', ').join(sql.Placeholder() for _ in entry)  # Correctly use placeholders for values
+                    sql.SQL(', ').join(sql.Placeholder() for _ in entry)  # Placeholders for the values
                 ), tuple(entry.values()))  # Pass values here
+
             conn.commit()
-            print("Table 'employer' filled.")
+            print(f"Таблица {table_name} заполнена.")
 
         except Exception as e:
-            print(f"Error filling table: {e}")
+            print(f"Ошибка заполнения таблицы: {e}")
         finally:
             cursor.close()
             conn.close()
