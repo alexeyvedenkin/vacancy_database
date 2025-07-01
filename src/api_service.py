@@ -12,7 +12,6 @@ class HeadHunterAPI():
 
     def __init__(self, file_worker: Any) -> None:
         super().__init__()
-        # self.__url = 'https://api.hh.ru/vacancies'
         self.__headers = {'User-Agent': 'HH-User-Agent'}
         self.__params = {'text': '', 'page': 0, 'per_page': 100, 'area': 113, 'employer_id': ''}
         self.__employers: list[Employer] = []
@@ -32,15 +31,14 @@ class HeadHunterAPI():
         for employer_id in EMPLOYERS_ID:
             response = requests.get(f"{self.__url}/{employer_id}", headers=self.__headers)
 
-            if response.status_code != 200:  # Check for a successful response
+            if response.status_code != 200:
                 print(f"Ошибка: {response.status_code} для ID: {employer_id}")
-                continue  # Skip this ID if there was an error
+                continue
 
-            employer_data = response.json()  # Get the employer data
+            employer_data = response.json()
 
-            # Check if the employer's name contains the keyword
             if keyword.lower() in employer_data.get('name', '').lower():
-                self.__employers.append(employer_data)  # Add to the list if it matches
+                self.__employers.append(employer_data)
 
         return self.__employers
 
@@ -48,32 +46,31 @@ class HeadHunterAPI():
         """ Метод для загрузки вакансий с сайта api.hh.ru """
         self.__url = 'https://api.hh.ru/vacancies'
         self.__params['employer_id'] = employer_id
-        self.__params['page'] = 0  # Сброс страницы перед загрузкой
+        self.__params['page'] = 0
         max_pages = 50
 
         while self.__params['page'] < max_pages:
             response = requests.get(self.__url, headers=self.__headers, params=self.__params)
 
-            if response.status_code != 200:  # Проверка на успешный ответ
+            if response.status_code != 200:
                 print(f"Ошибка: {response.status_code}")
                 break
 
-            fetched_vacancies = response.json().get('items', [])  # Восстановление данных
+            fetched_vacancies = response.json().get('items', [])
 
             if not fetched_vacancies:
-                break  # Прерываем цикл, если нет данных
+                break
 
             for vacancy in fetched_vacancies:
-                # Вывод полной информации о вакансии для отладки
-                print(vacancy)  # Дебаг: выводим данные вакансии
 
-                # Проверяем наличие ключей 'salary' и 'currency'
+                print(vacancy)
+
                 salary = vacancy.get('salary')
-                if salary is not None and salary.get('currency') == 'RUR':  # Заменено: объединили проверку на None
-                    # Проверяем, совпадает ли идентификатор работодателя
-                    if employer_id == vacancy['employer']['id']:
-                        self.__vacancies.append(vacancy)  # Добавляем только при совпадении валюты
+                if salary is not None and salary.get('currency') == 'RUR':
 
-            self.__params['page'] += 1  # Переход к следующей странице
+                    if employer_id == vacancy['employer']['id']:
+                        self.__vacancies.append(vacancy)
+
+            self.__params['page'] += 1
 
         return self.__vacancies
