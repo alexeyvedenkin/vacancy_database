@@ -83,7 +83,7 @@ class DBMaker:
         try:
             dsn = (f"dbname={self.db_name} user={self.user} password={self.password} "
                    f"host={self.host} port={self.port}")
-            self.connection = psycopg2.connect(dsn)  # Connect to the new database
+            self.connection = psycopg2.connect(dsn)
             self.cursor = self.connection.cursor()
         except Exception as e:
             print("Ошибка при подключении к базе данных:", str(e))
@@ -123,14 +123,13 @@ class DBMaker:
         create_statement = f'CREATE TABLE IF NOT EXISTS "{table_name}" ({columns_definition});'
 
         try:
-            # Remove the second execution; it's redundant
-            self.cursor.execute(create_statement)  # Execute the create statement
-            self.connection.commit()  # Save (commit) changes
+            self.cursor.execute(create_statement)
+            self.connection.commit()
         except Exception as e:
-            print("Ошибка создания таблицы:", e)  # Print error if it occurs
+            print("Ошибка создания таблицы:", e)
         finally:
-            self.cursor.close()  # Close cursor
-            self.connection.close()  # Close connection
+            self.cursor.close()
+            self.connection.close()
 
     def fill_table(self, table_name: str, json_data: str) -> None:
         """ Выполняет загрузку данных из JSON в таблицы"""

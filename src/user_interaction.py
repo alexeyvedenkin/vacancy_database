@@ -92,45 +92,41 @@ def user_interaction() -> None:
           f'информация о всех вакансиях сохраняется в CSV-файл')
 
     print()
-    # Get and print company info and vacancy counts
+
     try:
         mode_input = input("Выберите режим отображения (1 - Полный, любой другой символ - Облегченный): ").strip()
 
-        # Determine the mode based on the input
         if mode_input == '1':
-            mode = 'полный'  # Set mode to full if user inputs '1'
+            mode = 'полный'
         else:
-            mode = 'облегченный'  # Otherwise, set mode to simplified
+            mode = 'облегченный'
 
-        # Determine the number of vacancies to show in Simplified mode
         if mode == 'облегченный':
-            count_input = input("Введите количество вакансий для вывода: ")  # Get user input
-            if not count_input:  # Check if the input is empty
+            count_input = input("Введите количество вакансий для вывода: ")
+            if not count_input:
                 print('По умолчанию установлен вывод 5 вакансий')
-                count = 5  # Default count
+                count = 5
             else:
                 try:
-                    count = int(count_input)  # Convert input to integer
-                except ValueError:  # Catch conversion errors
+                    count = int(count_input)
+                except ValueError:
                     print('Ошибка: Введите целое число. По умолчанию установлен вывод 5 вакансий')
-                    count = 5  # Default count if conversion fails
+                    count = 5
         else:
-            count = None  # Show all vacancies in Full mode
+            count = None
 
         print()
 
-        # Print the selected mode and count for confirmation - optional
         print(f"Выбранный режим: {mode}")
         if count is not None:
             print(f"Количество вакансий для вывода: {count}")
 
         print()
 
-        # Display information about employers and open vacancies
         print("Сведения о работодателях и количестве открытых вакансий:")
         info_from_company_and_vacancies = db_manager.get_companies_and_vacancies_count()
         print(f"{'ID':<10} {'Company Name':<60} {'Open Vacancies':<10}")
-        print("-" * 80)  # Separator line
+        print("-" * 80)
 
         for employer in info_from_company_and_vacancies:
             employer_id = getattr(employer, 'employer_id', 'N/A')
@@ -138,24 +134,21 @@ def user_interaction() -> None:
             vacancies_count = getattr(employer, 'open_vacancies', 0)
             print(f"{employer_id:<10} {employer_name:<60} {vacancies_count:<10}")
 
-        print()  # Print a new line
+        print()
 
-        # Wait for the user to proceed to the next block of data
         input("Нажмите Enter, чтобы перейти к сведениям об открытых вакансиях...")
 
         print("Сведения об открытых вакансиях")
-        vacancies = db_manager.get_all_vacancies()  # Call the method to get the vacancies
+        vacancies = db_manager.get_all_vacancies()
 
-        # Use user-defined count or default to 5 if count is None (Full mode)
         for vacancy in vacancies[:count] if count is not None else vacancies:
-            print(vacancy)  # Print the formatted Vacancy
+            print(vacancy)
 
         print()
         print(f'Выведены сведения о {len(vacancies[:count])} вакансий из имеющихся {len(vacancies)}')
         print('Полный список вакансий выгружен в файл "data/all_vacancies.csv"')
         print()
 
-        # Wait for the user to proceed to the Average Salary section
         input("Нажмите Enter, чтобы перейти к средней зарплате...")
 
         avg_salary = db_manager.get_avg_salary()
@@ -163,7 +156,6 @@ def user_interaction() -> None:
         print()
 
         input("Нажмите Enter, чтобы перейти к вакансиям с зарплатой выше средней...")
-        # Higher salary vacancies
         print("Сведения о вакансиях с зарплатой выше средней")
         higher_vacancies = db_manager.get_vacancies_with_higher_salary()
         for vacancy in higher_vacancies[:count] if count is not None else higher_vacancies:
@@ -174,21 +166,18 @@ def user_interaction() -> None:
         print('Полный список вакансий выгружен в файл "data/higher_salary_vacancies.csv"')
         print()
 
-        # Wait for the user to continue to filtering vacancies
         input("Нажмите Enter, чтобы перейти к фильтрации вакансий...")
 
-        while True:  # Start an infinite loop to allow repeated filtering
-            # Filtering vacancies with the keyword
+        while True:
             user_key = input('Введите ключевое слово для фильтрации вакансий (нажмите Enter, чтобы завершить): ')
 
-            if user_key == "":  # Check if the user just pressed Enter
+            if user_key == "":
                 print("Выход из фильтрации.")
-                break  # Break the loop if Enter is pressed
+                break
 
             print()
             filtered_vacancies = db_manager.get_vacancies_with_keyword(user_key)
 
-            # Adjusting the slicing based on count
             for vacancy in filtered_vacancies[:count] if count is not None else filtered_vacancies:
                 print(vacancy)
 
