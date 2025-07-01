@@ -149,17 +149,22 @@ def load_fixtures(db_maker) -> None:
 
     # Check if the fixtures directory exists
     if not os.path.exists(fixtures_dir):
-        print(f"The directory {fixtures_dir} does not exist.")
+        print(f"Директория {fixtures_dir} не существует.")
         return  # Exit if directory is not found
 
     for filename in os.listdir(fixtures_dir):
         if filename.endswith('.json'):
-            # Используем try-except для обработки возможных ошибок при открытии файла
             try:
                 with open(os.path.join(fixtures_dir, filename), 'r', encoding='utf-8') as file:
-                    json_data = json.load(file)  # Загружаем данные из JSON файла
-                    db_maker.create_table(filename[:-5], json_data)  # Создаем таблицу по имени файла без расширения
-                    db_maker.fill_table(filename[:-5], json_data)  # Заполняем таблицу данными
-                    print(f"Загружены данные из '{filename}' в таблицу '{filename[:-5]}'.")
+                    json_data = json.load(file)  # Load data from JSON file
+
+                    table_name = filename[:-5]  # Get the table name without the ".json" extension
+
+                    # Check existence and create table
+                    db_maker.create_table(table_name, json_data)  # Create table
+                    print(f"Table '{table_name}' created (if it didn't exist).")
+
+                    db_maker.fill_table(table_name, json_data)  # Fill the table with data
+                    print(f"Загружены данные из '{filename}' в таблицу '{table_name}'.")
             except Exception as e:
-                print(f"Ошибка при загрузке файла '{filename}': {e}")  # Выводим сообщение об ошибке
+                print(f"Ошибка при загрузке файла '{filename}': {e}")  # Output error message
