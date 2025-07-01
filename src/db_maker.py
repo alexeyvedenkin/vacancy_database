@@ -38,7 +38,14 @@ class DBMaker:
             cursor.execute(f"SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = %s;", (db_name,))
             cursor.execute(f"DROP DATABASE {db_name};")  # Now drop the database
 
+    def set_database_name(self, db_name):
+        """ Метод для установки имени базы данных """
+        self.db_name = db_name  # Set the database name
+
     def create_database(self, db_name):
+
+        self.set_database_name(db_name)  # Set db_name before using it
+
         if self.database_exists(db_name):  # Проверка на существование
             print(f"База данных '{db_name}' уже существует.")
             return  # Выход, если база уже существует
@@ -47,11 +54,14 @@ class DBMaker:
         cursor.execute(f"CREATE DATABASE {db_name};")  # Создание базы данных
         cursor.close()
 
+        # Установить имя базы данных
+        self.db_name = db_name  # Обновляем self.db_name
+
         # Закрываем текущее соединение
         self.connection.close()
 
         # Создаем новое соединение для новой базы
-        self.connection = psycopg2.connect(database=db_name,
+        self.connection = psycopg2.connect(database=self.db_name,
                                            user=self.user,
                                            password=self.password,
                                            host=self.host,
@@ -60,6 +70,10 @@ class DBMaker:
 
     def connect_to_database(self):
         """ Метод для подключения к базе данных """
+
+        if not self.db_name:
+            print("Ошибка: имя базы данных не задано.")
+            return
 
         try:
             dsn = (f"dbname={self.db_name} user={self.user} password={self.password} "
@@ -70,15 +84,14 @@ class DBMaker:
             print("Ошибка при подключении к базе данных:", str(e))
             self.cursor = None
 
-        if not self.db_name:
-            print("Ошибка: имя базы данных не задано.")
-            return
-
     def create_table(self, table_name, json_data):  # Added 'self' to parameters
         self.connect_to_database()  # Call the method to connect to the database
         if not self.cursor:  # Check if cursor created successfully
             print("Не удалось создать курсор. Прекращение.")
             return
+
+        if isinstance(json_data, str):  # Check if json_data is a JSON string
+            json_data = json.loads(json_data)  # Convert JSON string to list
 
         # Если json_data — список, берём первый элемент для определения полей
         if isinstance(json_data, list) and json_data:  # Ensure json_data is a non-empty list
@@ -129,6 +142,11 @@ class DBMaker:
                 if not isinstance(entry, dict):  # Ensure each entry is a dictionary
                     print("Ошибка: каждая запись в списке должна быть словарем.")
                     continue
+
+                # Replace None values with 0
+                for key in entry:
+                    if entry[key] is None:  # Check if the value is None (equivalent to [null] in JSON)
+                        entry[key] = 0  # Replace with 0
 
                 # Use the table_name parameter in the SQL query
                 cursor.execute(sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
